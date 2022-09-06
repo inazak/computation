@@ -348,11 +348,11 @@ func MakeComputer(image [][]int) *CPUInfo {
 }
 
 func Initialize() {
-  Init() //nandgate.Init()
+  Init() //logicgate.Init()
 }
 
 func TickTock() {
-  Tick() //nandgate.Tick()
+  Tick() //logicgate.Tick()
 }
 
 
