@@ -1,15 +1,16 @@
-package lambda
+package vm
 
 import (
   "strings"
+  "github.com/inazak/computation/lambda/v03/lambda/ast"
 )
 
 
-type Environment map[string]Expression
+type Environment map[string]Value
 
-// ***** AST and StackItem *****
+// ***** Value *****
 
-type Expression interface {
+type Value interface {
   String() string
 }
 
@@ -19,12 +20,12 @@ type Symbol struct {
 
 type Function struct {
   Arg  string
-  Body Expression
+  Body Value
 }
 
 type Application struct {
-  Left  Expression
-  Right Expression
+  Left  Value
+  Right Value
 }
 
 type Closure struct {
@@ -108,18 +109,18 @@ func (w Wrap) String() string {
 
 // ***** Compile *****
 
-func Compile(expr Expression) []Statement {
+func Compile(expr ast.Expression) []Statement {
 
   switch v := expr.(type) {
-  case Symbol:
+  case ast.Symbol:
     return []Statement{ Fetch{ Name: v.Name }, }
 
-  case Application:
+  case ast.Application:
     left  := Compile(v.Left)
     right := Compile(v.Right)
     return append(append(left, right...), Apply{})
 
-  case Function:
+  case ast.Function:
     return []Statement{
       Close{
         Arg: v.Arg,
@@ -137,24 +138,24 @@ func Compile(expr Expression) []Statement {
 // ***** Machine *****
 
 type VM struct {
-  stack []Expression
+  stack []Value
   env   Environment
   code  []Statement
 }
 
 func NewVM(env Environment, code []Statement) *VM {
   return &VM {
-    stack: []Expression{},
+    stack: []Value{},
     env:   env,
     code:  code,
   }
 }
 
-func (vm *VM) PushStack(item Expression) {
+func (vm *VM) PushStack(item Value) {
   vm.stack = append(vm.stack, item)
 }
 
-func (vm *VM) PopStack() Expression {
+func (vm *VM) PopStack() Value {
   if len(vm.stack) == 0 {
     return nil
   }
@@ -172,17 +173,17 @@ func (vm *VM) Next() Statement {
   return statement
 }
 
-func (vm *VM) GetEnv(name string) (expr Expression, ok bool) {
+func (vm *VM) GetEnv(name string) (expr Value, ok bool) {
   expr, ok = vm.env[name]
   return expr, ok
 }
 
-func (vm *VM) SetEnv(name string, expr Expression) {
+func (vm *VM) SetEnv(name string, expr Value) {
   vm.env[name] = expr
 }
 
 
-func (vm *VM) Run() Expression {
+func (vm *VM) Run() Value {
 
   for {
     statement := vm.Next()
