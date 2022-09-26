@@ -1,6 +1,8 @@
 package vm
 
 import (
+  "log"
+  "os"
   "strings"
   "github.com/inazak/computation/lambda/v03/lambda/ast"
 )
@@ -141,6 +143,7 @@ type VM struct {
   stack []Value
   env   Environment
   code  []Statement
+  logger *log.Logger
 }
 
 func NewVM(env Environment, code []Statement) *VM {
@@ -150,6 +153,21 @@ func NewVM(env Environment, code []Statement) *VM {
     code:  code,
   }
 }
+
+func (vm *VM) logf(format string, v ...interface{}) {
+  if vm.logger != nil {
+    vm.logger.Printf(format, v...)
+  }
+}
+
+func (vm *VM) EnableLogging() {
+  vm.logger = log.New(os.Stderr, "", log.LstdFlags)
+}
+
+func (vm *VM) DisableLogging() {
+  vm.logger = nil
+}
+
 
 func (vm *VM) PushStack(item Value) {
   vm.stack = append(vm.stack, item)
@@ -187,32 +205,15 @@ func (vm *VM) Run() Value {
 
   for {
     statement := vm.Next()
+
     if statement == nil {
 
-      result := vm.PopStack()
-      if closure, ok := result.(Closure) ; ok {
+      vm.logf("[debug] code is empty, exit vm.Run()\n")
 
-        // push dump
-        // but env is not used and codecp is empty
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Statement, len(vm.code))
-        copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, }, codecp...)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
-
-        // extend code
-        vm.code = closure.Code
-
-        statement = vm.Next()
-
-      } else {
-        vm.PushStack(result)
-        break
-      }
+      break
     }
+
+    vm.logf("[debug] code :%s\n", statement)
 
     switch v := statement.(type) {
     case Fetch:
@@ -282,6 +283,28 @@ func (vm *VM) Run() Value {
         panic("vm.run: lost dump in return statement")
       }
 
+      //add Wrap
+      result = vm.PopStack()
+      if closure, ok := result.(Closure) ; ok {
+
+        // push dump
+        // but env is not used and codecp is empty
+        envcp := make(Environment, len(vm.env))
+        for k, v := range vm.env {
+          envcp[k] = v
+        }
+        codecp := make([]Statement, len(vm.code))
+        copy(codecp, vm.code)
+        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, }, codecp...)
+        vm.PushStack( Dump { Env: envcp, Code: codecp } )
+
+        // extend code
+        vm.code = closure.Code
+
+      } else {
+        vm.PushStack(result)
+      }
+
     case Wrap:
       result := vm.PopStack()
       vm.PushStack(Function{ Arg: v.Arg, Body: result })
@@ -289,6 +312,10 @@ func (vm *VM) Run() Value {
     default:
       panic("vm.run: unknown statement")
     }
+
+    vm.logf("[debug] env  :%s\n", vm.env)
+    vm.logf("[debug] stack:%s\n", vm.stack)
+    vm.logf("[debug] ---\n")
 
   }
 
