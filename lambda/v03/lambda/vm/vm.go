@@ -230,6 +230,8 @@ func (vm *VM) Run() Value {
 
       if closure, ok := left.(Closure) ; ok {
 
+        vm.logf("[debug] apply left is closure\n")
+
         // push dump
         envcp := make(Environment, len(vm.env))
         for k, v := range vm.env {
@@ -245,6 +247,8 @@ func (vm *VM) Run() Value {
         vm.env[closure.Arg] = right
 
       } else if closure, ok := right.(Closure) ; ok {
+
+        vm.logf("[debug] apply right is closure\n")
 
         vm.PushStack(left)
 
@@ -275,39 +279,47 @@ func (vm *VM) Run() Value {
     case Return:
       result := vm.PopStack()
       d      := vm.PopStack()
-      if dump, ok := d.(Dump); ok {
-        vm.code = dump.Code
-        vm.env  = dump.Env
-        vm.PushStack(result)
-      } else {
-        panic("vm.run: lost dump in return statement")
-      }
 
       //add Wrap
-      result = vm.PopStack()
       if closure, ok := result.(Closure) ; ok {
 
+        vm.logf("[debug] stack top is closure\n")
+        vm.logf("[debug] add wrap, dump, and expand closure\n")
+
+        vm.PushStack(d)
+
         // push dump
-        // but env is not used and codecp is empty
         envcp := make(Environment, len(vm.env))
         for k, v := range vm.env {
           envcp[k] = v
         }
         codecp := make([]Statement, len(vm.code))
         copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, }, codecp...)
+        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, Return{}, }, codecp...)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
         // extend code
         vm.code = closure.Code
 
       } else {
+
+        vm.logf("[debug] stack top is NOT closure\n")
+
         vm.PushStack(result)
+
+        if dump, ok := d.(Dump); ok {
+          vm.code = dump.Code
+          vm.env  = dump.Env
+        } else {
+          panic("vm.run: lost dump in return statement")
+        }
+
       }
 
     case Wrap:
       result := vm.PopStack()
       vm.PushStack(Function{ Arg: v.Arg, Body: result })
+
 
     default:
       panic("vm.run: unknown statement")
