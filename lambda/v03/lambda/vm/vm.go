@@ -23,6 +23,7 @@ type Symbol struct {
 type Function struct {
   Arg  string
   Body Value
+  Closure Closure
 }
 
 type Application struct {
@@ -82,6 +83,7 @@ type Return struct {}
 
 type Wrap struct {
   Arg string
+  Closure Closure
 }
 
 func (f Fetch) String() string {
@@ -228,6 +230,10 @@ func (vm *VM) Run() Value {
       right := vm.PopStack()
       left  := vm.PopStack()
 
+      if function, ok := left.(Function) ; ok {
+        left = function.Closure
+      }
+
       if closure, ok := left.(Closure) ; ok {
 
         vm.logf("[debug] apply left is closure\n")
@@ -295,7 +301,7 @@ func (vm *VM) Run() Value {
         }
         codecp := make([]Statement, len(vm.code))
         copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, Return{}, }, codecp...)
+        codecp = append([]Statement{ Wrap{ Arg: closure.Arg, Closure: closure }, Return{}, }, codecp...)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
         // extend code
@@ -318,7 +324,7 @@ func (vm *VM) Run() Value {
 
     case Wrap:
       result := vm.PopStack()
-      vm.PushStack(Function{ Arg: v.Arg, Body: result })
+      vm.PushStack(Function{ Arg: v.Arg, Body: result, Closure: v.Closure })
 
 
     default:
