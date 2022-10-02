@@ -82,7 +82,6 @@ type Apply struct {}
 type Return struct {}
 
 type Wrap struct {
-  Arg string
   Closure Closure
 }
 
@@ -107,7 +106,7 @@ func (r Return) String() string {
 }
 
 func (w Wrap) String() string {
-  return "Wrap " + w.Arg
+  return "Wrap " + w.Closure.Arg
 }
 
 
@@ -265,7 +264,7 @@ func (vm *VM) Run() Value {
         }
         codecp := make([]Statement, len(vm.code))
         copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Arg: closure.Arg }, Apply{} }, codecp...)
+        codecp = append([]Statement{ Wrap{ Closure: closure }, Apply{} }, codecp...)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
         // extend code
@@ -301,7 +300,7 @@ func (vm *VM) Run() Value {
         }
         codecp := make([]Statement, len(vm.code))
         copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Arg: closure.Arg, Closure: closure }, Return{}, }, codecp...)
+        codecp = append([]Statement{ Wrap{ Closure: closure }, Return{}, }, codecp...)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
         // extend code
@@ -324,7 +323,7 @@ func (vm *VM) Run() Value {
 
     case Wrap:
       result := vm.PopStack()
-      vm.PushStack(Function{ Arg: v.Arg, Body: result, Closure: v.Closure })
+      vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
 
 
     default:
