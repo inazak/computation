@@ -269,6 +269,7 @@ func (vm *VM) Run() Value {
 
         // extend code
         vm.code = closure.Code
+        delete(vm.env, closure.Arg)
 
       } else {
         vm.PushStack( Application{ Left: left, Right: right } )
@@ -305,6 +306,7 @@ func (vm *VM) Run() Value {
 
         // extend code
         vm.code = closure.Code
+        delete(vm.env, closure.Arg)
 
       } else {
 
