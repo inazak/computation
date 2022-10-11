@@ -31,10 +31,14 @@ type Application struct {
   Right Value
 }
 
+type Delay struct {
+  Code []Statement //left, right, Apply
+}
+
 type Closure struct {
   Arg  string
   Env  Environment
-  Code []Statement
+  Code []Statement //code, Return
 }
 
 type Dump struct {
@@ -52,6 +56,10 @@ func (f Function) String() string {
 
 func (a Application) String() string {
   return "(" + a.Left.String() + " " + a.Right.String() + ")"
+}
+
+func (d Delay) String() string {
+  return "<delay>"
 }
 
 func (c Closure) String() string {
@@ -78,6 +86,10 @@ type Close struct {
   Code []Statement
 }
 
+type Call struct {
+  Code []Statement
+}
+
 type Apply struct {}
 type Return struct {}
 
@@ -96,6 +108,15 @@ func (c Close) String() string {
   }
   return "Close " + c.Arg + ", [" + strings.Join(list, "; ") + "]"
 }
+
+func (c Call) String() string {
+  list := []string{}
+  for _, code := range c.Code {
+    list = append(list, code.String())
+  }
+  return "Call [" + strings.Join(list, "; ") + "]"
+}
+
 
 func (a Apply) String() string {
   return "Apply"
@@ -121,7 +142,11 @@ func Compile(expr ast.Expression) []Statement {
   case ast.Application:
     left  := Compile(v.Left)
     right := Compile(v.Right)
-    return append(append(left, right...), Apply{})
+    return []Statement{
+      Call{
+        Code: append(append(left, right...), Apply{}),
+      },
+    }
 
   case ast.Function:
     return []Statement{
@@ -209,8 +234,20 @@ func (vm *VM) Run() Value {
 
     if statement == nil {
 
-      vm.logf("[debug] code is empty, exit vm.Run()\n")
+      vm.logf("[debug] code is empty\n")
+      rest := vm.PopStack()
 
+      if rest != nil {
+        switch v := rest.(type) {
+        case Delay:
+          codecp := make([]Statement, len(v.Code))
+          copy(codecp, v.Code)
+          vm.code = codecp
+          continue
+        }
+      }
+
+      vm.PushStack(rest)
       break
     }
 
@@ -228,10 +265,6 @@ func (vm *VM) Run() Value {
     case Apply:
       right := vm.PopStack()
       left  := vm.PopStack()
-
-      if function, ok := left.(Function) ; ok {
-        left = function.Closure
-      }
 
       if closure, ok := left.(Closure) ; ok {
 
@@ -251,29 +284,12 @@ func (vm *VM) Run() Value {
         vm.code = closure.Code
         vm.env[closure.Arg] = right
 
-      } else if closure, ok := right.(Closure) ; ok {
-
-        vm.logf("[debug] apply right is closure\n")
-
-        vm.PushStack(left)
-
-        // push dump
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Statement, len(vm.code))
-        copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Closure: closure }, Apply{} }, codecp...)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
-
-        // extend code
-        vm.code = closure.Code
-        delete(vm.env, closure.Arg)
-
       } else {
         vm.PushStack( Application{ Left: left, Right: right } )
       }
+
+    case Call:
+      vm.PushStack( Delay{ Code: v.Code } )
 
     case Close:
       envcp := make(Environment, len(vm.env))
@@ -286,47 +302,14 @@ func (vm *VM) Run() Value {
       result := vm.PopStack()
       d      := vm.PopStack()
 
-      //add Wrap
-      if closure, ok := result.(Closure) ; ok {
+      vm.PushStack(result)
 
-        vm.logf("[debug] stack top is closure\n")
-        vm.logf("[debug] add wrap, dump, and expand closure\n")
-
-        vm.PushStack(d)
-
-        // push dump
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Statement, len(vm.code))
-        copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Closure: closure }, Return{}, }, codecp...)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
-
-        // extend code
-        vm.code = closure.Code
-        delete(vm.env, closure.Arg)
-
+      if dump, ok := d.(Dump); ok {
+        vm.code = dump.Code
+        vm.env  = dump.Env
       } else {
-
-        vm.logf("[debug] stack top is NOT closure\n")
-
-        vm.PushStack(result)
-
-        if dump, ok := d.(Dump); ok {
-          vm.code = dump.Code
-          vm.env  = dump.Env
-        } else {
-          panic("vm.run: lost dump in return statement")
-        }
-
+        panic("vm.run: lost dump in return statement")
       }
-
-    case Wrap:
-      result := vm.PopStack()
-      vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
-
 
     default:
       panic("vm.run: unknown statement")

@@ -24,6 +24,19 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
   return result
 }
 
+func TestDummy(t *testing.T) {
+  text   := "(^x.x (y y))"
+  expect := "(y y)"
+
+  result := ReadCompileAndRun(t, text, true)
+
+  if result.String() != expect {
+    t.Errorf("expected=%s, but got=%s", expect, result.String())
+  }
+}
+
+/*
+
 func TestSucc(t *testing.T) {
   text   := "(^n.^f.^x.(f ((n f) x)) ^f.^x.(f x))" //(Succ 1)
   expect := "^f.^x.(f (f x))" //2
@@ -54,6 +67,17 @@ func TestIsZero1(t *testing.T) {
 
   expect := "^x.^y.x" //True
 
+  result := ReadCompileAndRun(t, text, false)
+
+  if result.String() != expect {
+    t.Errorf("expected=%s, but got=%s", expect, result.String())
+  }
+}
+
+func TestIsZero2(t *testing.T) {
+  text   := "((^f.^x.(f x) (^x.^y.x ^x.^y.y)) ^x.^y.x)"
+  expect := "^x.^y.y" //False
+
   result := ReadCompileAndRun(t, text, true)
 
   if result.String() != expect {
@@ -61,4 +85,5 @@ func TestIsZero1(t *testing.T) {
   }
 }
 
+*/
 
