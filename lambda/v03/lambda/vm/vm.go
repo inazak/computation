@@ -250,11 +250,37 @@ func (vm *VM) Run() Value {
 
       if rest != nil {
         switch v := rest.(type) {
+
         case Delay:
+
+          vm.logf("[debug] stack is delay\n")
+
           codecp := make([]Statement, len(v.Code))
           copy(codecp, v.Code)
           vm.code = codecp
           continue
+
+
+        case Closure:
+
+          vm.logf("[debug] stack is closure\n")
+
+          // push dump
+          envcp := make(Environment, len(vm.env))
+          for k, v := range vm.env {
+            envcp[k] = v
+          }
+          codecp := make([]Statement, len(vm.code))
+          copy(codecp, vm.code)
+          codecp = append([]Statement{ Wrap{ Closure: v }, }, codecp...)
+          vm.PushStack( Dump { Env: envcp, Code: codecp } )
+
+          // extend code
+          vm.env  = v.Env
+          vm.code = v.Code
+          //delete(vm.env, v.Arg)
+          continue
+
         }
       }
 
@@ -334,29 +360,7 @@ func (vm *VM) Run() Value {
       result := vm.PopStack()
       d      := vm.PopStack()
 
-      //add Wrap
-      if closure, ok := result.(Closure) ; ok {
-
-        vm.logf("[debug] stack top is closure\n")
-        vm.logf("[debug] add wrap, dump, and expand closure\n")
-
-        vm.PushStack(d)
-
-        // push dump
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Statement, len(vm.code))
-        copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Closure: closure }, Return{}, }, codecp...)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
-
-        // extend code
-        vm.code = closure.Code
-        delete(vm.env, closure.Arg)
-
-      } else if delay, ok := result.(Delay) ; ok {
+      if delay, ok := result.(Delay) ; ok {
 
         vm.logf("[debug] stack top is delay\n")
 
@@ -365,8 +369,6 @@ func (vm *VM) Run() Value {
         vm.code = append( append(delay.Code, Return{}), vm.code...)
 
       } else {
-
-        vm.logf("[debug] stack top is NOT closure, delay\n")
 
         vm.PushStack(result)
 
@@ -381,7 +383,29 @@ func (vm *VM) Run() Value {
 
     case Wrap:
       result := vm.PopStack()
-      vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
+
+      if closure, ok := result.(Closure) ; ok {
+
+        vm.logf("[debug] wrap but stack is closure\n")
+
+        // push dump
+        envcp := make(Environment, len(vm.env))
+        for k, v := range vm.env {
+          envcp[k] = v
+        }
+        codecp := make([]Statement, len(vm.code))
+        copy(codecp, vm.code)
+        codecp = append([]Statement{ Wrap{ Closure: closure }, Wrap{ Closure: v.Closure }, }, codecp...)
+        vm.PushStack( Dump { Env: envcp, Code: codecp } )
+
+        // extend code
+        vm.env  = closure.Env
+        vm.code = closure.Code
+        //delete(vm.env, closure.Arg)
+
+      } else {
+        vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
+      }
 
 
     default:
