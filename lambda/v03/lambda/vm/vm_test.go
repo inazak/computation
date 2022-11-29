@@ -25,55 +25,14 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
 }
 
 
-func TestSucc(t *testing.T) {
-  text   := "(^n.^f.^x.(f ((n f) x)) ^f.^x.(f x))" //(Succ 1)
-  expect := "^f.^x.(f (f x))" //2
+func Test1(t *testing.T) {
+  text   := "(^x.y z)"
+  expect := "y"
 
-  result := ReadCompileAndRun(t, text, false)
-
-  if result.String() != expect {
-    t.Errorf("expected=%s, but got=%s", expect, result.String())
-  }
-}
-
-
-func TestPred(t *testing.T) {
-  text   := "(^n.^f.^x.(((n ^g.^h.(h (g f))) ^u.x) ^u.u) ^f.^x.(f (f x)))" //(Pred 2)
-  expect := "^f.^x.(f x)" //1
-
-  result := ReadCompileAndRun(t, text, false)
+  result := ReadCompileAndRun(t, text, true)
 
   if result.String() != expect {
     t.Errorf("expected=%s, but got=%s", expect, result.String())
   }
 }
-
-
-func TestIsZero1(t *testing.T) {
-  text   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^f.^x.x)" //(IsZero 0)
-  // IsZero == ^x.((x (True False)) True)
-  // True  == ^x.^y.x
-  // False == ^x.^y.y
-
-  expect := "^x.^y.x" //True
-
-  result := ReadCompileAndRun(t, text, false)
-
-  if result.String() != expect {
-    t.Errorf("expected=%s, but got=%s", expect, result.String())
-  }
-}
-
-
-func TestIsZero2(t *testing.T) {
-  text   := "((^f.^x.(f x) (^x.^y.x ^x.^y.y)) ^x.^y.x)"
-  expect := "^x.^y.y" //False
-
-  result := ReadCompileAndRun(t, text, false)
-
-  if result.String() != expect {
-    t.Errorf("expected=%s, but got=%s", expect, result.String())
-  }
-}
-
 

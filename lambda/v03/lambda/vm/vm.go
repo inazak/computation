@@ -2,11 +2,7 @@ package vm
 
 import (
   "log"
-  "os"
-  "strings"
-  "github.com/inazak/computation/lambda/v03/lambda/ast"
 )
-
 
 type Environment map[string]Value
 
@@ -32,17 +28,17 @@ type Application struct {
 }
 
 type Delay struct {
-  Code []Statement //left, right, Apply
+  Code []Instruction //left, right, Apply
 }
 
 type Closure struct {
   Arg  string
   Env  Environment
-  Code []Statement //code, Return
+  Code []Instruction //code, Return
 }
 
 type Dump struct {
-  Code []Statement
+  Code []Instruction
   Env Environment
 }
 
@@ -71,140 +67,22 @@ func (d Dump) String() string {
 }
 
 
-// ***** Statement *****
-
-type Statement interface {
-  String() string
-}
-
-type Fetch struct {
-  Name string
-}
-
-type Close struct {
-  Arg  string
-  Code []Statement
-}
-
-type Call struct {
-  Code []Statement
-}
-
-type Apply struct {}
-type RLApply struct {}
-type LRApply struct {}
-
-type Return struct {}
-
-type Wrap struct {
-  Closure Closure
-}
-
-func (f Fetch) String() string {
-  return "Fetch " + f.Name
-}
-
-func (c Close) String() string {
-  list := []string{}
-  for _, code := range c.Code {
-    list = append(list, code.String())
-  }
-  return "Close " + c.Arg + ", [" + strings.Join(list, "; ") + "]"
-}
-
-func (c Call) String() string {
-  list := []string{}
-  for _, code := range c.Code {
-    list = append(list, code.String())
-  }
-  return "Call [" + strings.Join(list, "; ") + "]"
-}
-
-
-func (a Apply) String() string {
-  return "Apply"
-}
-
-func (a RLApply) String() string {
-  return "RLApply"
-}
-
-func (a LRApply) String() string {
-  return "LRApply"
-}
-
-func (r Return) String() string {
-  return "Return"
-}
-
-func (w Wrap) String() string {
-  return "Wrap " + w.Closure.Arg
-}
-
-
-// ***** Compile *****
-
-func Compile(expr ast.Expression) []Statement {
-
-  switch v := expr.(type) {
-  case ast.Symbol:
-    return []Statement{ Fetch{ Name: v.Name }, }
-
-  case ast.Application:
-    left  := Compile(v.Left)
-    right := Compile(v.Right)
-    return []Statement{
-      Call{
-        Code: append(append(left, right...), Apply{}),
-      },
-    }
-
-  case ast.Function:
-    return []Statement{
-      Close{
-        Arg: v.Arg,
-        Code: append(Compile(v.Body), Return{} ),
-      },
-    }
-
-  default:
-    panic("compile: unknown expression")
-  }
-
-}
-
-
 // ***** Machine *****
 
 type VM struct {
   stack []Value
   env   Environment
-  code  []Statement
+  code  []Instruction
   logger *log.Logger
 }
 
-func NewVM(env Environment, code []Statement) *VM {
+func NewVM(env Environment, code []Instruction) *VM {
   return &VM {
     stack: []Value{},
     env:   env,
     code:  code,
   }
 }
-
-func (vm *VM) logf(format string, v ...interface{}) {
-  if vm.logger != nil {
-    vm.logger.Printf(format, v...)
-  }
-}
-
-func (vm *VM) EnableLogging() {
-  vm.logger = log.New(os.Stderr, "", log.LstdFlags)
-}
-
-func (vm *VM) DisableLogging() {
-  vm.logger = nil
-}
-
 
 func (vm *VM) PushStack(item Value) {
   vm.stack = append(vm.stack, item)
@@ -219,7 +97,7 @@ func (vm *VM) PopStack() Value {
   return item
 }
 
-func (vm *VM) Next() Statement {
+func (vm *VM) Next() Instruction {
   if len(vm.code) == 0 {
     return nil
   }
@@ -241,11 +119,12 @@ func (vm *VM) SetEnv(name string, expr Value) {
 func (vm *VM) Run() Value {
 
   for {
+    vm.debugPrint()
+
     statement := vm.Next()
 
     if statement == nil {
 
-      vm.logf("[debug] code is empty\n")
       rest := vm.PopStack()
 
       if rest != nil {
@@ -253,26 +132,21 @@ func (vm *VM) Run() Value {
 
         case Delay:
 
-          vm.logf("[debug] stack is delay\n")
-
-          codecp := make([]Statement, len(v.Code))
+          codecp := make([]Instruction, len(v.Code))
           copy(codecp, v.Code)
           vm.code = codecp
           continue
 
-
         case Closure:
-
-          vm.logf("[debug] stack is closure\n")
 
           // push dump
           envcp := make(Environment, len(vm.env))
           for k, v := range vm.env {
             envcp[k] = v
           }
-          codecp := make([]Statement, len(vm.code))
+          codecp := make([]Instruction, len(vm.code))
           copy(codecp, vm.code)
-          codecp = append([]Statement{ Wrap{ Closure: v }, }, codecp...)
+          codecp = append([]Instruction{ Wrap{ Closure: v }, }, codecp...)
           vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
           // extend code
@@ -287,8 +161,6 @@ func (vm *VM) Run() Value {
       vm.PushStack(rest)
       break
     }
-
-    vm.logf("[debug] code :%s\n", statement)
 
     switch v := statement.(type) {
     case Fetch:
@@ -318,14 +190,12 @@ func (vm *VM) Run() Value {
 
       if closure, ok := left.(Closure) ; ok {
 
-        vm.logf("[debug] apply left is closure\n")
-
         // push dump
         envcp := make(Environment, len(vm.env))
         for k, v := range vm.env {
           envcp[k] = v
         }
-        codecp := make([]Statement, len(vm.code))
+        codecp := make([]Instruction, len(vm.code))
         copy(codecp, vm.code)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
@@ -362,8 +232,6 @@ func (vm *VM) Run() Value {
 
       if delay, ok := result.(Delay) ; ok {
 
-        vm.logf("[debug] stack top is delay\n")
-
         vm.PushStack(d)
 
         vm.code = append( append(delay.Code, Return{}), vm.code...)
@@ -386,16 +254,14 @@ func (vm *VM) Run() Value {
 
       if closure, ok := result.(Closure) ; ok {
 
-        vm.logf("[debug] wrap but stack is closure\n")
-
         // push dump
         envcp := make(Environment, len(vm.env))
         for k, v := range vm.env {
           envcp[k] = v
         }
-        codecp := make([]Statement, len(vm.code))
+        codecp := make([]Instruction, len(vm.code))
         copy(codecp, vm.code)
-        codecp = append([]Statement{ Wrap{ Closure: closure }, Wrap{ Closure: v.Closure }, }, codecp...)
+        codecp = append([]Instruction{ Wrap{ Closure: closure }, Wrap{ Closure: v.Closure }, }, codecp...)
         vm.PushStack( Dump { Env: envcp, Code: codecp } )
 
         // extend code
@@ -407,16 +273,13 @@ func (vm *VM) Run() Value {
         vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
       }
 
-
     default:
       panic("vm.run: unknown statement")
     }
 
-    vm.logf("[debug] env  :%s\n", vm.env)
-    vm.logf("[debug] stack:%s\n", vm.stack)
-    vm.logf("[debug] ---\n")
-
   }
+
+  vm.debugPrint()
 
   return vm.PopStack()
 }
