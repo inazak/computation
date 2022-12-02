@@ -25,11 +25,12 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
 }
 
 
-func Test1(t *testing.T) {
-  text   := "(^x.y z)"
-  expect := "y"
+func TestSucc(t *testing.T) {
+  code   := "(^n.^f.^x.(f ((n f) x)) ^f.^x.(f x))" //(Succ 1)
+  expect := "^f.^x.(f (f x))" //2
 
-  result := ReadCompileAndRun(t, text, true)
+  t.Logf("code = " + code)
+  result := ReadCompileAndRun(t, code, true)
 
   if result.String() != expect {
     t.Errorf("expected=%s, but got=%s", expect, result.String())

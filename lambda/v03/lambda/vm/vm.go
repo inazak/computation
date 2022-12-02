@@ -1,6 +1,7 @@
 package vm
 
 import (
+  "fmt"
   "log"
 )
 
@@ -59,11 +60,11 @@ func (d Delay) String() string {
 }
 
 func (c Closure) String() string {
-  return "<closure>"
+  return fmt.Sprintf("<closure e=%v>", c.Env)
 }
 
 func (d Dump) String() string {
-  return "<dump>"
+  return fmt.Sprintf("<dump e=%v>", d.Env)
 }
 
 
