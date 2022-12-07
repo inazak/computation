@@ -85,6 +85,10 @@ func NewVM(env Environment, code []Instruction) *VM {
   }
 }
 
+func (vm *VM) IsStackEmpty() bool {
+  return len(vm.stack) == 0
+}
+
 func (vm *VM) PushStack(item Value) {
   vm.stack = append(vm.stack, item)
 }
@@ -116,50 +120,38 @@ func (vm *VM) SetEnv(name string, expr Value) {
   vm.env[name] = expr
 }
 
+func (vm *VM) PushDump() {
+  //copy environment
+  envcp := make(Environment, len(vm.env))
+  for k, v := range vm.env {
+    envcp[k] = v
+  }
+
+  //copy code
+  codecp := make([]Instruction, len(vm.code))
+  copy(codecp, vm.code)
+
+  //push Dump
+  vm.PushStack( Dump { Env: envcp, Code: codecp } )
+}
+
+func (vm *VM) InsertInstruction(i Instruction) {
+  vm.code = append([]Instruction{ i }, vm.code...)
+}
+
+func (vm *VM) InsertInstructions(is []Instruction) {
+  vm.code = append(is, vm.code...)
+}
 
 func (vm *VM) Run() Value {
 
+  LOOP:
   for {
+
     vm.debugPrint()
 
     statement := vm.Next()
-
     if statement == nil {
-
-      rest := vm.PopStack()
-
-      if rest != nil {
-        switch v := rest.(type) {
-
-        case Delay:
-
-          codecp := make([]Instruction, len(v.Code))
-          copy(codecp, v.Code)
-          vm.code = codecp
-          continue
-
-        case Closure:
-
-          // push dump
-          envcp := make(Environment, len(vm.env))
-          for k, v := range vm.env {
-            envcp[k] = v
-          }
-          codecp := make([]Instruction, len(vm.code))
-          copy(codecp, vm.code)
-          codecp = append([]Instruction{ Wrap{ Closure: v }, }, codecp...)
-          vm.PushStack( Dump { Env: envcp, Code: codecp } )
-
-          // extend code
-          vm.env  = v.Env
-          vm.code = v.Code
-          //delete(vm.env, v.Arg)
-          continue
-
-        }
-      }
-
-      vm.PushStack(rest)
       break
     }
 
@@ -191,14 +183,7 @@ func (vm *VM) Run() Value {
 
       if closure, ok := left.(Closure) ; ok {
 
-        // push dump
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Instruction, len(vm.code))
-        copy(codecp, vm.code)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
+        vm.PushDump()
 
         // extend env
         vm.env  = closure.Env
@@ -207,11 +192,13 @@ func (vm *VM) Run() Value {
 
       } else if delay, ok := left.(Delay) ; ok {
         vm.PushStack( right )
-        vm.code = append( append( delay.Code, LRApply{} ), vm.code... )
+        vm.InsertInstruction( LRApply{} )
+        vm.InsertInstructions( delay.Code )
 
       } else if delay, ok := right.(Delay) ; ok {
         vm.PushStack( left )
-        vm.code = append( append( delay.Code, RLApply{} ), vm.code... )
+        vm.InsertInstruction( RLApply{} )
+        vm.InsertInstructions( delay.Code )
 
       } else {
         vm.PushStack( Application{ Left: left, Right: right } )
@@ -235,7 +222,8 @@ func (vm *VM) Run() Value {
 
         vm.PushStack(d)
 
-        vm.code = append( append(delay.Code, Return{}), vm.code...)
+        vm.InsertInstruction( Return{} )
+        vm.InsertInstructions( delay.Code )
 
       } else {
 
@@ -255,20 +243,13 @@ func (vm *VM) Run() Value {
 
       if closure, ok := result.(Closure) ; ok {
 
-        // push dump
-        envcp := make(Environment, len(vm.env))
-        for k, v := range vm.env {
-          envcp[k] = v
-        }
-        codecp := make([]Instruction, len(vm.code))
-        copy(codecp, vm.code)
-        codecp = append([]Instruction{ Wrap{ Closure: closure }, Wrap{ Closure: v.Closure }, }, codecp...)
-        vm.PushStack( Dump { Env: envcp, Code: codecp } )
+        vm.InsertInstruction( Wrap{ Closure: v.Closure } )
+        vm.InsertInstruction( Wrap{ Closure: closure } )
+        vm.PushDump()
 
         // extend code
         vm.env  = closure.Env
         vm.code = closure.Code
-        //delete(vm.env, closure.Arg)
 
       } else {
         vm.PushStack(Function{ Arg: v.Closure.Arg, Body: result, Closure: v.Closure })
@@ -278,7 +259,36 @@ func (vm *VM) Run() Value {
       panic("vm.run: unknown statement")
     }
 
+  } //for
+
+
+  if vm.IsStackEmpty() {
+    return nil
   }
+
+  rest := vm.PopStack()
+
+  switch v := rest.(type) {
+
+  case Delay:
+
+    codecp := make([]Instruction, len(v.Code))
+    copy(codecp, v.Code)
+    vm.code = codecp
+    goto LOOP
+
+  case Closure:
+
+    vm.InsertInstruction( Wrap{ Closure: v } )
+    vm.PushDump()
+
+    vm.env  = v.Env
+    vm.code = v.Code
+    goto LOOP
+
+  } //switch
+
+  vm.PushStack(rest)
 
   vm.debugPrint()
 
