@@ -25,9 +25,17 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
 }
 
 
-func TestSucc(t *testing.T) {
-  code   := "(^n.^f.^x.(f ((n f) x)) ^f.^x.(f x))" //(Succ 1)
-  expect := "^f.^x.(f (f x))" //2
+func Test(t *testing.T) {
+  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^f.^x.x)"
+  //expect := "^x.^y.x" //->NG
+  //code   := "((^f.^x.x (^x.^y.x ^x.^y.y)) ^x.^y.x)"
+  //expect := "^x.^y.x" //->OK
+  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^a.z)"
+  //expect := "(z ^x.^y.x)" //->OK
+  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^a.a)"
+  //expect := "^x.^y.y" //->OK
+  //code   := "(^x.(^x.^y.x ^x.^y.y) ^f.^x.x)"
+  //expect := "^y.^x.^y.y" //->OK
 
   t.Logf("code = " + code)
   result := ReadCompileAndRun(t, code, true)

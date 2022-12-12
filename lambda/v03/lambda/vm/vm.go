@@ -60,11 +60,11 @@ func (d Delay) String() string {
 }
 
 func (c Closure) String() string {
-  return fmt.Sprintf("<closure e=%v>", c.Env)
+  return fmt.Sprintf("<closure e=%v>",c.Env)
 }
 
 func (d Dump) String() string {
-  return fmt.Sprintf("<dump e=%v>", d.Env)
+  return fmt.Sprintf("<dump e=%v c=%v>", d.Env, d.Code)
 }
 
 
@@ -182,11 +182,11 @@ func (vm *VM) Run() Value {
       }
 
       if closure, ok := left.(Closure) ; ok {
-
         vm.PushDump()
-
         // extend env
-        vm.env  = closure.Env
+        for k, _ := range closure.Env {
+          vm.env[k] = closure.Env[k]
+        }
         vm.code = closure.Code
         vm.env[closure.Arg] = right
 
@@ -194,6 +194,17 @@ func (vm *VM) Run() Value {
         vm.PushStack( right )
         vm.InsertInstruction( LRApply{} )
         vm.InsertInstructions( delay.Code )
+
+      } else if closure, ok := right.(Closure) ; ok {
+        vm.PushStack( left )
+        vm.InsertInstruction( RLApply{} )
+        vm.InsertInstruction( Wrap{ Closure: closure } )
+        vm.PushDump()
+        for k, _ := range closure.Env {
+          vm.env[k] = closure.Env[k]
+        }
+        delete(vm.env, closure.Arg)
+        vm.code = closure.Code
 
       } else if delay, ok := right.(Delay) ; ok {
         vm.PushStack( left )
@@ -247,7 +258,7 @@ func (vm *VM) Run() Value {
         vm.InsertInstruction( Wrap{ Closure: closure } )
         vm.PushDump()
 
-        // extend code
+        //delete(vm.env, closure.Arg) //FIXME
         vm.env  = closure.Env
         vm.code = closure.Code
 
