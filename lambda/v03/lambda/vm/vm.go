@@ -258,7 +258,6 @@ func (vm *VM) Run() Value {
         vm.InsertInstruction( Wrap{ Closure: closure } )
         vm.PushDump()
 
-        //delete(vm.env, closure.Arg) //FIXME
         vm.env  = closure.Env
         vm.code = closure.Code
 
@@ -292,8 +291,10 @@ func (vm *VM) Run() Value {
 
     vm.InsertInstruction( Wrap{ Closure: v } )
     vm.PushDump()
-
-    vm.env  = v.Env
+    for k, _ := range v.Env {
+      vm.env[k] = v.Env[k]
+    }
+    delete(vm.env, v.Arg)
     vm.code = v.Code
     goto LOOP
 

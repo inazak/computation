@@ -25,20 +25,12 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
 }
 
 
-func Test(t *testing.T) {
-  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^f.^x.x)"
-  //expect := "^x.^y.x" //->NG
-  //code   := "((^f.^x.x (^x.^y.x ^x.^y.y)) ^x.^y.x)"
-  //expect := "^x.^y.x" //->OK
-  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^a.z)"
-  //expect := "(z ^x.^y.x)" //->OK
-  //code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^a.a)"
-  //expect := "^x.^y.y" //->OK
-  //code   := "(^x.(^x.^y.x ^x.^y.y) ^f.^x.x)"
-  //expect := "^y.^x.^y.y" //->OK
+func TestIsZero0(t *testing.T) {
+  code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^f.^x.x)" //(IsZero 0)
+  expect := "^x.^y.x" //True
 
   t.Logf("code = " + code)
-  result := ReadCompileAndRun(t, code, true)
+  result := ReadCompileAndRun(t, code, false)
 
   if result.String() != expect {
     t.Errorf("expected=%s, but got=%s", expect, result.String())
