@@ -25,9 +25,9 @@ func ReadCompileAndRun(t *testing.T, text string, logging bool) (result Value) {
 }
 
 
-func TestIsZero0(t *testing.T) {
-  code   := "(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ^f.^x.x)" //(IsZero 0)
-  expect := "^x.^y.x" //True
+func Test(t *testing.T) {
+  code   := "(^f.f (z f))" //Loop
+  expect := "(z f)"
 
   t.Logf("code = " + code)
   result := ReadCompileAndRun(t, code, false)
