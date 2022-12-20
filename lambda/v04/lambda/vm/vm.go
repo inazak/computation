@@ -198,7 +198,7 @@ func (vm *VM) Run() Value {
         vm.PushDump()
         vm.env  = closure.Env
         vm.code = closure.Code
-        delete(vm.env, closure.Arg) //FIXME
+        delete(vm.env, closure.Arg) //for internal reduction
 
       } else if callure, ok := right.(Callure) ; ok {
         vm.PushStack( left )
@@ -255,7 +255,7 @@ func (vm *VM) Run() Value {
     case Wrap:
       result := vm.PopStack()
       s      := vm.PopStack()
-      symbol, _ := s.(Symbol) //FIXME
+      symbol, _ := s.(Symbol) //for internal reduction
 
       if closure, ok := result.(Closure) ; ok {
 
@@ -268,6 +268,7 @@ func (vm *VM) Run() Value {
         vm.PushDump()
         vm.env  = closure.Env
         vm.code = closure.Code
+        delete(vm.env, closure.Arg) //for internal reduction
 
       } else {
         vm.PushStack(Function{ Arg: symbol.Name, Body: result })
@@ -303,7 +304,7 @@ func (vm *VM) Run() Value {
     vm.PushDump()
     vm.env = v.Env
     vm.code = v.Code
-    delete(vm.env, v.Arg) //FIXME
+    delete(vm.env, v.Arg) //for internal reduction
     goto LOOP
 
   } //switch
