@@ -79,7 +79,7 @@ func TestVMRunIsZeroF(t *testing.T) {
   }
 }
 
-func TestVMMod(t *testing.T) {
+func TestVMRunMod(t *testing.T) {
   text   := "(((^f.(^x.(f (x x)) ^x.(f (x x))) ^f.^m.^n.(((^b.b ((^x.^y.(^x.((x (^x.^y.x ^x.^y.y)) ^x.^y.x) ((^x.^y.((y ^n.^f.^x.(((n ^g.^h.(h (g f))) ^u.x) ^u.u)) x) x) y)) n) m)) ((f ((^x.^y.((y ^n.^f.^x.(((n ^g.^h.(h (g f))) ^u.x) ^u.u)) x) m) n)) n)) m)) ^f.^x.(f (f (f (f (f x)))))) ^f.^x.(f (f x)))" //((Mod 5) 2)
   expect := "^f.^x.(f x)" //1
 
