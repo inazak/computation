@@ -38,7 +38,7 @@ extremely small logic blocks of computer architecture
 
 次の図の構成を例にする。
 
-![](https://raw.githubusercontent.com/inazak/computation/logicgate/v02/logicgate/master/_misc/01-01.png)
+![](https://raw.githubusercontent.com/inazak/computation/master/logicgate/v02/logicgate/_misc/01-01.png)
 
 図の要素の説明は、次の通り。
 
@@ -96,7 +96,7 @@ NAND 1000 1001 3000
 
 図にすると次の通り。
 
-![](https://raw.githubusercontent.com/inazak/computation/logicgate/v02/logicgate/master/_misc/02-01.png)
+![](https://raw.githubusercontent.com/inazak/computation/master/logicgate/v02/logicgate/_misc/02-01.png)
 
 スクリプトにすると次の通り。
 
@@ -140,7 +140,7 @@ $ logicgate.exe 03.txt
 
 図にすると次の通り。
 
-![](https://raw.githubusercontent.com/inazak/computation/logicgate/v02/logicgate/master/_misc/04-01.png)
+![](https://raw.githubusercontent.com/inazak/computation/master/logicgate/v02/logicgate/_misc/04-01.png)
 
 この構成の入出力は次のようになる。
 
